@@ -3,8 +3,6 @@ import inspect
 
 import walk
 import food
-from dl import case
-
 
 def main():
     parser = argparse.ArgumentParser(description='dl playing bot')
@@ -37,7 +35,6 @@ def main():
     jobs = {
         "walk": walk.main,
         "food": food.main,
-        "case": case.main,
     }
 
     job = jobs.get(args.job)
