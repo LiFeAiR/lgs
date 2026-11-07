@@ -7,6 +7,7 @@ import re
 import utils
 from datetime import datetime, timedelta
 
+BOT_STATE = {"enabled": True}
 STATE = {}
 CUR_BUILD = ""
 CUR_ROOM = ""
@@ -22,10 +23,13 @@ async def sleep():
 
 
 async def worker(name, client, quiet):
-    global STATE, CUR_BUILD, CUR_ROOM, LAST_EVENT, BOT_NAME, CURRENT_POSITION
+    global BOT_STATE, STATE, CUR_BUILD, CUR_ROOM, LAST_EVENT, BOT_NAME, CURRENT_POSITION
 
     while True:
         await sleep()
+
+        if "enabled" not in BOT_STATE or not BOT_STATE["enabled"]:
+            continue
 
         # print("!!test!!")
 
@@ -54,7 +58,7 @@ async def worker(name, client, quiet):
 
 
 async def check_rooms(client, event, key):
-    global STATE, CUR_BUILD, CUR_ROOM, BOT_NAME
+    global BOT_STATE, STATE, CUR_BUILD, CUR_ROOM, BOT_NAME
     if key == '👤 Профиль':
         return
 
@@ -74,7 +78,7 @@ async def check_rooms(client, event, key):
 
 
 def check_state() -> bool:
-    global STATE, CUR_BUILD, CUR_ROOM, BOT_NAME
+    global BOT_STATE, STATE, CUR_BUILD, CUR_ROOM, BOT_NAME
     clear = False
 
     if CUR_BUILD != "":
@@ -107,15 +111,31 @@ def parse_intervals(text):
 
 
 def main(name="", api_id="", api_hash="", start=20, finish=64, pauses="", quiet=""):
-    global STATE, CUR_BUILD, CUR_ROOM, LAST_EVENT, BOT_NAME
+    global BOT_STATE, STATE, CUR_BUILD, CUR_ROOM, LAST_EVENT, BOT_NAME
 
     client = TelegramClient(name, api_id, api_hash)
     pauses = parse_intervals(pauses)
     quiet = parse_intervals(quiet)
 
+    @client.on(events.NewMessage(chats='me'))
+    async def handler(event):
+        # event.message.out указывает, что сообщение отправлено вами
+        if event.message.out and event.text.startswith("/lgs "):
+            print(f"Поймано сообщение самому себе: {event.text}")
+
+            if event.text == '/lgs disabled':
+                BOT_STATE["enabled"] = False
+
+            if event.text == '/lgs enabled':
+                BOT_STATE["enabled"] = True
+
     @client.on(events.NewMessage(chats=BOT_NAME, outgoing=True))
     async def my_outgoing_handler(event):
-        global STATE, CUR_BUILD, CUR_ROOM, LAST_EVENT, BOT_NAME
+        global BOT_STATE, STATE, CUR_BUILD, CUR_ROOM, LAST_EVENT, BOT_NAME
+
+        if "enabled" not in BOT_STATE or not BOT_STATE["enabled"]:
+            return
+
         LAST_EVENT = datetime.now()
 
         content = event.raw_text
@@ -140,7 +160,10 @@ def main(name="", api_id="", api_hash="", start=20, finish=64, pauses="", quiet=
 
     @client.on(events.NewMessage(chats=BOT_NAME, incoming=True))
     async def my_new_message(event):
-        global STATE, CUR_BUILD, CUR_ROOM, LAST_EVENT, BOT_NAME, CURRENT_POSITION
+        global BOT_STATE, STATE, CUR_BUILD, CUR_ROOM, LAST_EVENT, BOT_NAME, CURRENT_POSITION
+
+        if "enabled" not in BOT_STATE or not BOT_STATE["enabled"]:
+            return
 
         LAST_EVENT = datetime.now()
 
